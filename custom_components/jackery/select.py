@@ -55,8 +55,8 @@ SELECT_DESCRIPTIONS: tuple[JackerySelectEntityDescription, ...] = (
         property_key="sltb",
         slug="screen-timeout",
         options=["Off", "2 min", "2 h"],
-        value_map={0: "Off", 120: "2 min", 7200: "2 h"},
-        option_to_value={"Off": 0, "2 min": 120, "2 h": 7200},
+        value_map={0: "Off", 2: "2 min", 120: "2 h"},
+        option_to_value={"Off": 0, "2 min": 2, "2 h": 120},
         entity_category=EntityCategory.CONFIG,
     ),
     JackerySelectEntityDescription(
