@@ -1,25 +1,12 @@
-> I have a full time job and can't respond to issues, but I'm open to contributions! If you submit a reasonable pull request, I will review, respond, test, and merge if it looks good. Thank you for understanding!
-
 > **Known issue:** Some Jackery account variants or regions may expose a different device model set than expected.
 
 # Jackery Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![maintainer](https://img.shields.io/badge/maintainer-%40jannik000-blue.svg)](https://github.com/jannik000)
-[![version](https://img.shields.io/badge/version-0.3.1-blue.svg)](https://github.com/jannik000/jackery-homeassistant)
 
-This repository contains a refreshed Home Assistant integration for Jackery power stations. It is a vibe-coded port of an older concept and has been reworked to use a more modern entity model and a different backend approach.
+This is a vibe-code adaptation of https://github.com/theak/jackery-homeassistant, changing the backend from the original implementation to socketry from https://github.com/socketry/socketry. The goal was simple: not only read values from a Jackery power station, but also control it from Home Assistant.
 
-The original inspiration came from the earlier Jackery-related work in the community, while this version uses the socketry-based connection layer from https://github.com/socketry/socketry rather than the older direct backend call approach.
-
-## What changed in this version
-
-This version is intentionally different from the original prototype:
-
-- It uses the newer socketry-based backend path instead of the older direct backend call flow.
-- The original backend access was replaced with a more structured client layer.
-- The entity model was expanded from a simple sensor-only approach to a fuller Home Assistant experience with sensors, binary sensors, switches, selects, and number entities.
-- The integration now exposes more of the device state that Jackery devices report, including status, power values, alarms, and configuration-like controls where supported by the device.
+The integration exposes monitoring entities as well as controllable entities where the device supports them, including AC/DC switching and configuration options.
 
 ## Features
 
