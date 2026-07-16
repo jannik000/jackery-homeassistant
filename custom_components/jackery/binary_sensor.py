@@ -1,6 +1,9 @@
-"""Binary sensor platform for Jackery."""
+"""Binary sensor platform for Jackery integration."""
 
 from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -8,76 +11,108 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
+
+from .coordinator import JackeryCoordinator
+from .entity import JackeryEntity
+
+
+@dataclass(frozen=True, kw_only=True)
+class JackeryBinarySensorEntityDescription(BinarySensorEntityDescription):  # type: ignore[misc]
+    """Describes a Jackery binary sensor entity."""
+
+    property_key: str
+    is_on_fn: Callable[[object], bool | None]
+
+
+def _eq_one(raw: object) -> bool | None:
+    """Return True when value equals 1."""
+    if raw is None:
+        return None
+    try:
+        return bool(int(raw) == 1)  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        return None
+
+
+def _neq_zero(raw: object) -> bool | None:
+    """Return True when value is not zero."""
+    if raw is None:
+        return None
+    try:
+        return bool(int(raw) != 0)  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        return None
+
+
+BINARY_SENSOR_DESCRIPTIONS: tuple[JackeryBinarySensorEntityDescription, ...] = (
+    JackeryBinarySensorEntityDescription(
+        key="wss",
+        translation_key="wireless_charging",
+        property_key="wss",
+        device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
+        is_on_fn=_eq_one,
+    ),
+    JackeryBinarySensorEntityDescription(
+        key="ta",
+        translation_key="temperature_alarm",
+        property_key="ta",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_on_fn=_neq_zero,
+    ),
+    JackeryBinarySensorEntityDescription(
+        key="pal",
+        translation_key="power_alarm",
+        property_key="pal",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_on_fn=_neq_zero,
+    ),
 )
 
-from .const import DOMAIN, BINARY_SENSOR_DESCRIPTIONS
+
+class JackeryBinarySensorEntity(JackeryEntity, BinarySensorEntity):  # type: ignore[misc]
+    """Representation of a Jackery binary sensor."""
+
+    entity_description: JackeryBinarySensorEntityDescription
+
+    def __init__(
+        self,
+        coordinator: JackeryCoordinator,
+        device_sn: str,
+        description: JackeryBinarySensorEntityDescription,
+    ) -> None:
+        """Initialize the binary sensor entity."""
+        super().__init__(coordinator, device_sn, description)
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        raw = self._prop(self.entity_description.property_key)
+        if raw is None:
+            return None
+        return self.entity_description.is_on_fn(raw)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Jackery binary sensor entities."""
-    entry_data = hass.data[DOMAIN][config_entry.entry_id]
-    coordinators: dict[str, DataUpdateCoordinator] = entry_data["coordinators"]
-    devices: list[dict] = entry_data["devices"]
+    """Set up Jackery binary sensor entities from a config entry."""
+    coordinator: JackeryCoordinator = entry.runtime_data
+    entities: list[JackeryBinarySensorEntity] = []
 
-    entities = []
-    for device in devices:
-        device_id = device["devId"]
-        if device_id in coordinators:
-            coordinator = coordinators[device_id]
-            # Create entities for all binary sensor descriptions
-            for description in BINARY_SENSOR_DESCRIPTIONS:
-                entities.append(JackeryBinarySensor(coordinator, description, device))
+    for device in coordinator.devices:
+        sn = str(device.get("devSn", ""))
+        if not sn:
+            continue
+        device_data = coordinator.data.get(sn, {})
+        for description in BINARY_SENSOR_DESCRIPTIONS:
+            if description.property_key in device_data:
+                entities.append(JackeryBinarySensorEntity(coordinator, sn, description))
 
     async_add_entities(entities)
-
-
-class JackeryBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Implementation of a Jackery binary sensor."""
-
-    entity_description: BinarySensorEntityDescription
-
-    def __init__(
-        self,
-        coordinator: DataUpdateCoordinator,
-        description: BinarySensorEntityDescription,
-        device_info: dict,
-    ) -> None:
-        """Initialize the binary sensor."""
-        super().__init__(coordinator)
-        self.entity_description = description
-        self._device_id = device_info["devId"]
-
-        # Set a unique ID for this entity
-        self._attr_unique_id = f"{self._device_id}_{description.key}"
-
-        # Set the device info for this entity
-        # This groups all sensors under a single device in Home Assistant
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": device_info.get("devName", f"Jackery Device {self._device_id}"),
-            "manufacturer": "Jackery",
-            "model": device_info.get("productType"),
-        }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on.
-        
-        Different Jackery models emit different DC output parameters:
-        - odc: DC Output (models with combined USB + Car toggle)
-        - odcc: DC Car Output (models with separate toggles)
-        - odcu: USB Output (models with separate toggles)
-        """
-        value = self.coordinator.data.get(self.entity_description.key)
-        if value is None:
-            return None
-        return value == 1
