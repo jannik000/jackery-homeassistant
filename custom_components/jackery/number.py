@@ -79,14 +79,18 @@ class JackeryNumberEntity(JackeryEntity, NumberEntity):  # type: ignore[misc]
 
     @property
     def native_value(self) -> float | None:
-        """Return the current value."""
+        """Return the current value in hours for relevant settings."""
         raw = self._prop(self.entity_description.property_key)
         if raw is None:
             return None
         try:
-            return float(int(raw))  # type: ignore[call-overload]
+            value = int(raw)  # type: ignore[call-overload]
         except (TypeError, ValueError):
             return None
+
+        if self.entity_description.property_key in {"ast", "pm"}:
+            return float(value) / 60
+        return float(value)
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the number value via socketry."""
@@ -98,7 +102,11 @@ class JackeryNumberEntity(JackeryEntity, NumberEntity):  # type: ignore[misc]
         if coordinator.client is None:
             return
 
-        int_value = int(value)
+        if prop_key in {"ast", "pm"}:
+            int_value = int(value * 60)
+        else:
+            int_value = int(value)
+
         try:
             device = coordinator.client.device(sn)
             await device.set_property(slug, int_value)
