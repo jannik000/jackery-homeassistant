@@ -152,9 +152,7 @@
       },
       "battery_protection": {
         "name": "Battery protection"
-      }
-    },
-    "number": {
+      },
       "auto_shutdown": {
         "name": "Auto shutdown"
       },

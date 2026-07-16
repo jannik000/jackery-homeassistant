@@ -13,7 +13,6 @@ PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
     Platform.SELECT,
-    Platform.NUMBER,
 ]
 
 type JackeryConfigEntry = ConfigEntry[JackeryCoordinator]
