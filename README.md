@@ -1,48 +1,96 @@
 > I have a full time job and can't respond to issues, but I'm open to contributions! If you submit a reasonable pull request, I will review, respond, test, and merge if it looks good. Thank you for understanding!
 
-> **Known issue:** This integration currently [does not support accounts registered in the EU](https://github.com/theak/jackery-homeassistant/issues/2).
+> **Known issue:** Some Jackery account variants or regions may expose a different device model set than expected.
 
 # Jackery Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![maintainer](https://img.shields.io/badge/maintainer-%40theak-blue.svg)](https://github.com/theak)
-[![version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/theak/jackery-homeassistant)
+[![maintainer](https://img.shields.io/badge/maintainer-%40jannik000-blue.svg)](https://github.com/jannik000)
+[![version](https://img.shields.io/badge/version-0.3.1-blue.svg)](https://github.com/jannik000/jackery-homeassistant)
 
-Custom Home Assistant integration for monitoring Jackery portable power stations. This integration provides real-time sensor data for your Jackery devices including battery status, power output, temperature, and more.
+This repository contains a refreshed Home Assistant integration for Jackery power stations. It is a vibe-coded port of an older concept and has been reworked to use a more modern entity model and a different backend approach.
+
+The original inspiration came from the earlier Jackery-related work in the community, while this version uses the socketry-based connection layer from https://github.com/socketry/socketry rather than the older direct backend call approach.
+
+## What changed in this version
+
+This version is intentionally different from the original prototype:
+
+- It uses the newer socketry-based backend path instead of the older direct backend call flow.
+- The original backend access was replaced with a more structured client layer.
+- The entity model was expanded from a simple sensor-only approach to a fuller Home Assistant experience with sensors, binary sensors, switches, selects, and number entities.
+- The integration now exposes more of the device state that Jackery devices report, including status, power values, alarms, and configuration-like controls where supported by the device.
 
 ## Features
 
-- 🔋 **Battery Monitoring**: Track remaining battery percentage and temperature
-- ⚡ **Power Monitoring**: Monitor input/output power in watts
-- ⏱️ **Time Tracking**: View time to full charge and remaining output time
-- 🔌 **Output Status**: Binary sensors for AC, DC car, and USB output status
+- 🔋 **Battery and power monitoring** for charge level, input/output power, temperatures, and runtime estimates
+- 🔌 **Output and input control** through switches for AC/DC/USB/car outputs and input modes
+- ⚙️ **Configuration-style controls** for light mode, charge speed, battery protection, auto shutdown, energy saving, and screen timeout
+- 🧭 **Diagnostics and status entities** such as battery state, error codes, and system status
 
-## Supported Sensors
+## Supported entities
 
-### Regular Sensors
+### Sensors
 
-| Sensor                | Description                   | Unit     |
-| --------------------- | ----------------------------- | -------- |
-| Remaining Battery     | Current battery level         | %        |
-| Battery Temperature   | Battery temperature           | °C       |
-| Output Power          | Current power output          | W        |
-| Input Power           | Current power input           | W        |
-| AC Input Power        | AC power input                | W        |
-| Time to Full          | Estimated time to full charge | hours    |
-| Remaining Output Time | Estimated remaining runtime   | hours    |
-| AC Output Voltage     | AC output voltage             | V        |
-| Last Updated          | Timestamp of last data update | ISO 8601 |
+| Entity | Description | Unit |
+| ------ | ----------- | ---- |
+| Battery | Remaining battery percentage | % |
+| Battery temperature | Device temperature reading | °C |
+| Battery state | Idle / charging / discharging | - |
+| Input power | Current input power | W |
+| Output power | Current output power | W |
+| Time to full | Estimated time to full charge | h |
+| Time remaining | Estimated runtime remaining | h |
+| AC input power | AC-side input power | W |
+| Car input power | Car-input power | W |
+| AC voltage | AC output voltage | V |
+| AC frequency | AC output frequency | Hz |
+| AC power | AC power reading | W |
+| AC power (secondary) | Secondary AC power reading | W |
+| AC socket power | AC socket power reading | W |
+| Error code | Diagnostic error code | - |
+| Power mode battery | Battery-related power mode info | - |
+| Total temperature | Additional temperature reading | °C |
+| System status | Diagnostic system status | - |
 
-### Binary Sensors (ON/OFF)
+### Binary sensors
 
-| Sensor        | Description               |
-| ------------- | ------------------------- |
-| AC Output     | AC output status          |
-| DC Output     | DC output status          |
-| DC Car Output | DC car port output status |
-| USB Output    | USB output status         |
+| Entity | Description |
+| ------ | ----------- |
+| Wireless charging | Indicates wireless charging state |
+| Temperature alarm | Indicates a temperature alarm |
+| Power alarm | Indicates a power alarm |
 
-**Note:** Different Jackery device models may report different combinations of DC output sensors. Early exploration suggests some models use a combined `odc` parameter while others use separate `odcc` and `odcu` parameters.
+### Switches
+
+| Entity | Description |
+| ------ | ----------- |
+| AC output | Toggle AC output |
+| DC output | Toggle DC output |
+| USB output | Toggle USB output |
+| Car output | Toggle car output |
+| AC input | Toggle AC input |
+| DC input | Toggle DC input |
+| Super fast charge | Toggle super fast charge |
+| UPS mode | Toggle UPS mode |
+
+### Selects
+
+| Entity | Description |
+| ------ | ----------- |
+| Light mode | Select light mode |
+| Charge speed | Select charge speed |
+| Battery protection | Select battery protection |
+
+### Numbers
+
+| Entity | Description |
+| ------ | ----------- |
+| Auto shutdown | Set auto shutdown time |
+| Energy saving | Set energy saving time |
+| Screen timeout | Set screen timeout |
+
+> Note: The exact set of entities available depends on the Jackery device model and what the backend exposes for that device.
 
 ## Installation
 
@@ -145,8 +193,7 @@ logger:
 
 ## Dependencies
 
-- `requests>=2.31.0`
-- `pycryptodomex>=3.19.0`
+- `socketry>=0.2.4`
 
 ## Contributing
 
