@@ -4,7 +4,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 
-This is a vibe-code adaptation of https://github.com/theak/jackery-homeassistant, changing the backend from the original implementation to socketry from https://github.com/socketry/socketry. The goal was simple: not only read values from a Jackery power station, but also control it from Home Assistant.
+This is a vibe-code adaptation of https://github.com/theak/jackery-homeassistant, changing the backend from the original implementation to socketry from https://github.com/jlopez/socketry. The goal was simple: not only read values from a Jackery power station, but also control it from Home Assistant.
 
 The integration exposes monitoring entities as well as controllable entities where the device supports them, including AC/DC switching and configuration options.
 
