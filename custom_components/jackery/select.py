@@ -14,6 +14,7 @@ from socketry import MqttError
 
 from .coordinator import JackeryCoordinator
 from .entity import JackeryEntity
+from custom_components.jackery import coordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,9 +147,24 @@ class JackerySelectEntity(JackeryEntity, SelectEntity):  # type: ignore[misc]
             _LOGGER.error("Failed to set %s=%s for device %s: %s", slug, option, sn, err)
             return
 
-        # Optimistic update: reflect the expected device value
+        # Optimistic update:
+        # option_to_value contains the WRITE value, while value_map contains
+        # the raw value returned by the device when reading the property.
+        state_value = int_value
+
+        if self.entity_description.value_map is not None:
+            state_value = next(
+               (
+                  raw_value
+                  for raw_value, mapped_option
+                   in self.entity_description.value_map.items()
+                   if mapped_option == option
+               ),
+                int_value,
+         )
+
         if coordinator.data is not None and sn in coordinator.data:
-            coordinator.data[sn][prop_key] = int_value
+            coordinator.data[sn][prop_key] = state_value
             coordinator.async_set_updated_data(coordinator.data)
 
 
