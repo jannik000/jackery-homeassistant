@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -40,7 +41,7 @@ class JackerySensorEntityDescription(SensorEntityDescription):  # type: ignore[m
 
     property_key: str
     scale: float = 1.0
-    value_fn: Callable[[object], float | str | None] | None = None
+    value_fn: Callable[[object], float | str | datetime | None] | None = None
 
 
 def _battery_state_fn(raw: object) -> str | None:
@@ -204,6 +205,13 @@ SENSOR_DESCRIPTIONS: tuple[JackerySensorEntityDescription, ...] = (
         property_key="ss",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    JackerySensorEntityDescription(
+        key="last_mqtt_update",
+        translation_key="last_mqtt_update",
+        property_key="_last_mqtt_update",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
 )
 
 
@@ -222,7 +230,7 @@ class JackerySensorEntity(JackeryEntity, SensorEntity):  # type: ignore[misc]
         super().__init__(coordinator, device_sn, description)
 
     @property
-    def native_value(self) -> float | str | None:
+    def native_value(self) -> float | str | datetime | None:
         """Return the sensor value."""
         raw = self._prop(self.entity_description.property_key)
         if raw is None:
@@ -239,6 +247,8 @@ class JackerySensorEntity(JackeryEntity, SensorEntity):  # type: ignore[misc]
                 return None
 
         # Return raw numeric value as float, or string as-is
+        if isinstance(raw, datetime):
+            return raw
         if isinstance(raw, (int, float)):
             return float(raw)
         if isinstance(raw, str):

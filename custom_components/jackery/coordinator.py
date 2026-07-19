@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 from socketry import AuthenticationError, Client, Subscription
 
 from .const import CONF_EMAIL, CONF_PASSWORD, DEFAULT_POLL_INTERVAL
@@ -40,6 +41,7 @@ class JackeryCoordinator(DataUpdateCoordinator[JackeryData]):  # type: ignore[mi
         self.client: Client | None = None
         self.devices: list[dict[str, object]] = []
         self._subscription: Subscription | None = None
+        self.last_mqtt_update: dict[str, datetime] = {}
 
     @property
     def mqtt_connected(self) -> bool:
@@ -85,9 +87,16 @@ class JackeryCoordinator(DataUpdateCoordinator[JackeryData]):  # type: ignore[mi
                 # property map.
                 props = raw.get("properties") or raw
                 if isinstance(props, dict):
-                    data[sn] = props
+                    device_data = dict(props)
+
+                    # Virtuelle Diagnose-Property beibehalten.
+                    device_data["_last_mqtt_update"] = self.last_mqtt_update.get(sn)
+
+                    data[sn] = device_data
                 else:
-                    data[sn] = {}
+                    data[sn] = {
+                        "_last_mqtt_update": self.last_mqtt_update.get(sn),
+                    }
             except AuthenticationError as err:
                 # Auth errors affect the whole account — abort immediately.
                 raise ConfigEntryAuthFailed(str(err)) from err
@@ -102,14 +111,33 @@ class JackeryCoordinator(DataUpdateCoordinator[JackeryData]):  # type: ignore[mi
 
         return data
 
-    async def _handle_mqtt_update(self, device_sn: str, properties: dict[str, object]) -> None:
+    async def _handle_mqtt_update(
+        self,
+        device_sn: str,
+        properties: dict[str, object],
+    ) -> None:
         """Handle a real-time MQTT property update."""
+        now = dt_util.utcnow()
+        self.last_mqtt_update[device_sn] = now
+
+        _LOGGER.debug(
+            "Jackery MQTT update for %s at %s: %s",
+            device_sn,
+            now.isoformat(),
+            properties,
+        )
+
         if self.data is None:
             return
+
+        mqtt_data = dict(properties)
+        mqtt_data["_last_mqtt_update"] = now
+
         if device_sn in self.data:
-            self.data[device_sn].update(properties)
+            self.data[device_sn].update(mqtt_data)
         else:
-            self.data[device_sn] = dict(properties)
+            self.data[device_sn] = mqtt_data
+
         self.async_set_updated_data(self.data)
 
     async def async_unload(self) -> None:

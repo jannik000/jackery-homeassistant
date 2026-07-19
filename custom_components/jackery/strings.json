@@ -104,6 +104,9 @@
       },
       "system_status": {
         "name": "System status"
+      },
+      "last_mqtt_update": {
+        "name": "Last MQTT update"
       }
     },
     "binary_sensor": {
